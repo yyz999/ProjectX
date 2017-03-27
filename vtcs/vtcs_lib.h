@@ -17,8 +17,8 @@ public:
   bool StartService();
 
 private:
-  int calibration_freq_;
-  int port_number;
+  int calibration_freq_ = 5;
+  int port_number = 8880;
   int8 direction_; // [-127, +127]
   int8 magnitude_; // [-127, +127]
 

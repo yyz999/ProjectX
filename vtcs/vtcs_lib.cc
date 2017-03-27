@@ -3,6 +3,8 @@
 
 #include <cmath>
 
+#include "wiringPi.h"
+
 using namespace std;
 
 namespace vtcs_lib {
