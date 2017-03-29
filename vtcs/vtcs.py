@@ -26,8 +26,10 @@ class TractionControlSystem:
         GPIO.setmode(GPIO.BCM)
         GPIO.setup(5, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
         GPIO.setup(22, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+        GPIO.setup(15, GPIO.OUT)
         GPIO.setup(17, GPIO.OUT)
         GPIO.setup(18, GPIO.OUT)
+        GPIO.setup(6, GPIO.OUT)
         GPIO.setup(12, GPIO.OUT)
         GPIO.setup(13, GPIO.OUT)
         GPIO.add_event_detect(5, GPIO.RISING)
@@ -56,20 +58,24 @@ class TractionControlSystem:
     # Start to receive command
     def StartService(self):
         # Initialize Register configurationif(self.calibration_enable):
-        self.TractionCalibrateCallback()
         while True:
             print('Wait for a connection')
             connection, client_address = self.sock.accept()
+            self.TractionCalibrateCallback()
             try:
                 print >> sys.stderr, 'connection from', client_address
-                # Receive the data in small chunks and retransmit it
                 while True:
                     data = connection.recv(32)
                     self.ProcessCommand(data)
             finally:
                 # Clean up the connection
                 print('Connection closed')
+                self.Brake()
+                print('Brake')
+                self.calibration_enable = False
+                print('Calibration callback stop')
                 connection.close()
+                print('connection close')
 
     def ProcessCommand(self, command):
         cmd = command.split(':')
@@ -106,29 +112,33 @@ class TractionControlSystem:
     def Brake(self):
         self.left_channel.ChangeDutyCycle(0)
         self.right_channel.ChangeDutyCycle(0)
-        GPIO.output((12, 17), GPIO.LOW)
+        GPIO.output((6, 12, 15, 17), GPIO.LOW)
 
     def SetPWMsRegister(self):
         print('pwm_ratio:' + str(self.left_pwm_ratio) + ' ' +
               str(self.right_pwm_ratio))
         self.last_left_counter = self.left_counter
         self.last_right_counter = self.right_counter
-        if (self.left_pwm_ratio > 0):
-            left = self.left_pwm_ratio * 80 * self.left_offset
-            GPIO.output(12, GPIO.LOW)
-            self.left_channel.ChangeDutyCycle(left)
-        else:
-            left = (1 + self.left_pwm_ratio) * 80 * self.left_offset
-            GPIO.output(12, GPIO.HIGH)
-            self.left_channel.ChangeDutyCycle(left)
         if (self.right_pwm_ratio > 0):
-            right = self.right_pwm_ratio * 80 * self.right_offset
-            GPIO.output(17, GPIO.LOW)
-            self.right_channel.ChangeDutyCycle(abs(right))
+            right = abs(self.right_pwm_ratio * 80 * self.right_offset)
+            GPIO.output(12, GPIO.HIGH)
+            GPIO.output(6, GPIO.LOW)
+            self.right_channel.ChangeDutyCycle(right)
         else:
-            right = (1 + self.right_pwm_ratio) * 80 * self.right_offset
+            right = abs(self.right_pwm_ratio * 80 * self.right_offset)
+            GPIO.output(12, GPIO.LOW)
+            GPIO.output(6, GPIO.HIGH)
+            self.right_channel.ChangeDutyCycle(right)
+        if (self.left_pwm_ratio > 0):
+            left = abs(self.left_pwm_ratio * 80 * self.left_offset)
             GPIO.output(17, GPIO.HIGH)
-            self.right_channel.ChangeDutyCycle(abs(right))
+            GPIO.output(15, GPIO.LOW)
+            self.left_channel.ChangeDutyCycle(left)
+        else:
+            left = abs(self.left_pwm_ratio * 80 * self.left_offset)
+            GPIO.output(17, GPIO.LOW)
+            GPIO.output(15, GPIO.HIGH)
+            self.left_channel.ChangeDutyCycle(left)
 
     def LeftCounterCallback(self, channel):
         self.left_counter += 1
@@ -137,7 +147,7 @@ class TractionControlSystem:
         self.right_counter += 1
 
     def TractionCalibrateCallback(self):
-        if (True):
+        if (self.calibration_enable):
             threading.Timer(1.0 / self.calibration_freq,
                             self.TractionCalibrateCallback).start()
         if time.time() - self.last_cmd_timestamp > 0.2:
@@ -167,6 +177,8 @@ class TractionControlSystem:
         self.SetPWMsRegister()
 
 
+#main
 port = int(sys.argv[1])
 vtcs = TractionControlSystem(4, port)
 vtcs.StartService()
+#end

@@ -1,0 +1,76 @@
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=gb2312" />
+    <title>Tank CTL Server</title>
+</head>
+
+<body>
+    <canvas id="drawing2" width="300" height="300">Can not support canvas。</canvas>
+    <script>
+        var x_dir = 0;
+        var y_mag = 0;
+        socket = new WebSocket('');
+        var task = setInterval(function () {
+            // Send cmd M:y_mag:x_dir
+        }, 100);
+        function mouseMove(ev) {
+            Ev = ev || window.event;
+            var mousePos = mouseCoords(ev);
+            var drawing2 = document.getElementById("drawing2");
+            if (drawing2.getContext) {
+                var context2 = drawing2.getContext("2d");
+                //绘制矩形  
+                context2.fillStyle = "rgba(255,255,20,1)";
+                context2.fillRect(45, 45, 210, 210);
+                //绘制半透明的蓝色矩形  
+                context2.fillStyle = "rgba(255,0,0,0.5)";
+                context2.fillRect(50, 145, 200, 10);
+                //绘制红色描边矩形  
+                context2.fillStyle = "rgba(255,0,0,0.5)";
+                context2.fillRect(145, 50, 10, 200);
+                //绘制矩形 
+                var x, y;
+                if (mousePos.x < 60) {
+                    x = 60
+                }
+                else if (mousePos.x > 260) {
+                    x = 260
+                }
+                else {
+                    x = mousePos.x;
+                }
+                if (mousePos.y < 60) {
+                    y = 60
+                }
+                else if (mousePos.y > 260) {
+                    y = 260
+                }
+                else {
+                    y = mousePos.y;
+                }
+                context2.fillStyle = "rgba(0,0,0,1)";
+                context2.fillRect(x - 15, y - 15, 10, 10);
+                x_dir = (x - 160) / 100 * 127;
+                y_mag = (y - 160) / 100 * 127;
+                document.getElementById("xxx").value = x - 160;
+                document.getElementById("yyy").value = y - 160;
+            }
+        }
+        function mouseCoords(ev) {
+            if (ev.pageX || ev.pageY) {
+                return { x: ev.pageX, y: ev.pageY };
+            }
+            return {
+                x: ev.clientX + document.body.scrollLeft - document.body.clientLeft,
+                y: ev.clientY + document.body.scrollTop - document.body.clientTop
+            };
+        }
+        document.onmousemove = mouseMove;
+    </script>
+    <div>
+        X:
+        <input id=xxx type=text> Y:
+        <input id=yyy type=text>
+        <d/iv>
+</body>
