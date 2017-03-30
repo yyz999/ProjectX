@@ -10,10 +10,21 @@
     <script>
         var x_dir = 0;
         var y_mag = 0;
-        socket = new WebSocket('');
+        var xmlHttpRequest = new XMLHttpRequest();
+        xmlHttpRequest.onreadystatechange = GetDone;
         var task = setInterval(function () {
             // Send cmd M:y_mag:x_dir
+            cmd = 'M:' + y_mag.toString() + ':' + x_dir.toString();
+            xmlHttpRequest.open("CMD", cmd);
+            xmlHttpRequest.send();
         }, 100);
+        function GetDone() {
+            if (xmlHttpRequest.readyState == 4 && xmlHttpRequest.status == 200) {
+                xmlHttpRequest.abort();
+                xmlHttpRequest.onreadystatechange = GetDone;
+                xmlHttpRequest.responseType = "arraybuffer";
+            }
+        }
         function mouseMove(ev) {
             Ev = ev || window.event;
             var mousePos = mouseCoords(ev);

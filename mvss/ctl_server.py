@@ -7,6 +7,14 @@ import threading
 import time
 from time import sleep
 
+msg = ''
+last_cmd_timestamp = time.time()
+# Init socket
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+#s.connect(('localhost', sys.argv[1]))
+enable = True
+print('Socket Created')
+
 
 # HTTPRequestHandler class
 class CtlHTTPServer_RequestHandler(BaseHTTPRequestHandler):
@@ -23,15 +31,44 @@ class CtlHTTPServer_RequestHandler(BaseHTTPRequestHandler):
         f.close()
         return
 
+    def do_CMD(self):
+        # check cmd
+        global msg
+        global last_cmd_timestamp
+        global enable
+        print(self.path)
+        items = self.path.split(':')
+        if len(items) != 3:
+            return
+        if items[0] != 'M':
+            return
+        if int(item[1]) > 127 or int(item[1]) < 0:
+            return
+        if int(item[2]) > 127 or int(item[2]) < 0:
+            return
+        msg = self.path
+        last_cmd_timestamp = time.time()
+        self.send_response(200)
+        self.send_header("content-type", "text-html")
+        self.end_headers()
+        self.wfile.write(bytes('Done', "utf8"))
+        if not enable:
+            enable = True
+            threading.Timer(0.1, SendCallback).start()
+
 
 def SendCallback():
     global s
     global msg
     global enable
+    global last_cmd_timestamp
     if msg:
-        s.sendall(msg)
+        #s.sendall(msg)
+        print('send msg=' + msg)
     else:
         sleep(1)
+    if time.time() - last_cmd_timestamp > 1:
+        enable = False
     if enable:
         threading.Timer(0.1, SendCallback).start()
 
@@ -49,17 +86,5 @@ def run():
 
 
 # Main()
-# Init socket
-try:
-    #create an AF_INET, STREAM socket (TCP)
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-except socket.error, msg:
-    print 'Failed to create socket. Error code: ' + str(
-        msg[0]) + ' , Error message : ' + msg[1]
-    sys.exit()
-s.connect(('localhost', sys.argv[1]))
-msg = ''
-enable = True
-print 'Socket Created'
 threading.Timer(1, SendCallback).start()
 run()
