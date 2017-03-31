@@ -11,20 +11,17 @@
         var x_dir = 0;
         var y_mag = 0;
         var xmlHttpRequest = new XMLHttpRequest();
-        xmlHttpRequest.onreadystatechange = GetDone;
         var task = setInterval(function () {
             // Send cmd M:y_mag:x_dir
-            cmd = 'M:' + y_mag.toString() + ':' + x_dir.toString();
-            xmlHttpRequest.open("CMD", cmd);
-            xmlHttpRequest.send();
-        }, 100);
-        function GetDone() {
-            if (xmlHttpRequest.readyState == 4 && xmlHttpRequest.status == 200) {
-                xmlHttpRequest.abort();
-                xmlHttpRequest.onreadystatechange = GetDone;
-                xmlHttpRequest.responseType = "arraybuffer";
+            cmd = 'M/' + y_mag.toString() + '/' + x_dir.toString();
+            xmlHttpRequest.open("POST", '/server', true);
+            xmlHttpRequest.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+            xmlHttpRequest.onreadystatechange = function () {
+                if (xmlHttpRequest.readyState == XMLHttpRequest.DONE && xmlHttpRequest.status == 200) {
+                }
             }
-        }
+            xmlHttpRequest.send(cmd);
+        }, 100);
         function mouseMove(ev) {
             Ev = ev || window.event;
             var mousePos = mouseCoords(ev);
@@ -62,8 +59,8 @@
                 }
                 context2.fillStyle = "rgba(0,0,0,1)";
                 context2.fillRect(x - 15, y - 15, 10, 10);
-                x_dir = (x - 160) / 100 * 127;
-                y_mag = (y - 160) / 100 * 127;
+                x_dir = Math.floor((x - 160) / 100 * 127);
+                y_mag = Math.floor((y - 160) / 100 * 127);
                 document.getElementById("xxx").value = x - 160;
                 document.getElementById("yyy").value = y - 160;
             }
