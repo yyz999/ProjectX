@@ -63,7 +63,6 @@ class TractionControlSystem:
             connection, client_address = self.sock.accept()
             self.TractionCalibrateCallback()
             try:
-                print >> sys.stderr, 'connection from', client_address
                 while True:
                     data = connection.recv(32)
                     self.ProcessCommand(data)
@@ -115,30 +114,42 @@ class TractionControlSystem:
         GPIO.output((6, 12, 15, 17), GPIO.LOW)
 
     def SetPWMsRegister(self):
-        print('pwm_ratio:' + str(self.left_pwm_ratio) + ' ' +
-              str(self.right_pwm_ratio))
+        left = abs(self.left_pwm_ratio * self.left_offset)
+        right = abs(self.right_pwm_ratio * self.right_offset)
+        if left>1:
+            right /=left
+            left=1
+        elif right>1:
+            left /= right
+            right=1
+        print('pwm_ratio: %.4f %.4f'%(self.left_pwm_ratio, self.right_pwm_ratio))
+        print('adjusted_pwm_ratio: %.4f %.4f'%(left, right))
         self.last_left_counter = self.left_counter
         self.last_right_counter = self.right_counter
+        if left>80:
+            left=80
+        elif left<0:
+            left=0
+        if right>80:
+            right=80
+        elif right<0:
+            right=0
         if (self.right_pwm_ratio > 0):
-            right = abs(self.right_pwm_ratio * 80 * self.right_offset)
             GPIO.output(12, GPIO.HIGH)
             GPIO.output(6, GPIO.LOW)
-            self.right_channel.ChangeDutyCycle(right)
+            self.right_channel.ChangeDutyCycle(right * 80)
         else:
-            right = abs(self.right_pwm_ratio * 80 * self.right_offset)
             GPIO.output(12, GPIO.LOW)
             GPIO.output(6, GPIO.HIGH)
-            self.right_channel.ChangeDutyCycle(right)
+            self.right_channel.ChangeDutyCycle(right * 80)
         if (self.left_pwm_ratio > 0):
-            left = abs(self.left_pwm_ratio * 80 * self.left_offset)
             GPIO.output(17, GPIO.HIGH)
             GPIO.output(15, GPIO.LOW)
-            self.left_channel.ChangeDutyCycle(left)
+            self.left_channel.ChangeDutyCycle(left * 80)
         else:
-            left = abs(self.left_pwm_ratio * 80 * self.left_offset)
             GPIO.output(17, GPIO.LOW)
             GPIO.output(15, GPIO.HIGH)
-            self.left_channel.ChangeDutyCycle(left)
+            self.left_channel.ChangeDutyCycle(left * 80)
 
     def LeftCounterCallback(self, channel):
         self.left_counter += 1
@@ -151,31 +162,33 @@ class TractionControlSystem:
             threading.Timer(1.0 / self.calibration_freq,
                             self.TractionCalibrateCallback).start()
         if time.time() - self.last_cmd_timestamp > 0.2:
+            self.left_pwm_ratio = 0
+            self.right_pwm_ratio = 0
             self.Brake()
-            return
-        if self.left_pwm_ratio == 0 and self.right_pwm_ratio == 0:
+        elif self.left_pwm_ratio == 0 and self.right_pwm_ratio == 0:
             self.Brake()
-            return
-        left = float(self.left_counter - self.last_left_counter)
-        right = float(self.right_counter - self.last_right_counter)
-        if left == 0 or right == 0:
-            self.right_offset = 1
-            self.left_offset = 1
-        elif abs(self.last_left_pwm_ratio) >= abs(
-                self.last_right_pwm_ratio) and abs(self.left_pwm_ratio) >= abs(
-                    self.right_pwm_ratio):
-            self.right_offset *= self.last_left_pwm_ratio / self.last_right_pwm_ratio * right / left
-        elif abs(self.last_left_pwm_ratio) < abs(
-                self.last_right_pwm_ratio) and abs(self.left_pwm_ratio) < abs(
-                    self.right_pwm_ratio):
-            self.left_offset *= self.last_right_pwm_ratio / self.last_left_pwm_ratio * left / right
         else:
-            self.right_offset = 1
-            self.left_offset = 1
+            left = (self.left_counter - self.last_left_counter)
+            right = (self.right_counter - self.last_right_counter)
+            if left == 0 or right == 0 or self.last_right_pwm_ratio == 0 or self.last_left_pwm_ratio == 0:
+                self.right_offset = 1
+                self.left_offset = 1
+            elif abs(self.last_left_pwm_ratio) >= abs(
+                    self.last_right_pwm_ratio) and abs(self.left_pwm_ratio) >= abs(
+                        self.right_pwm_ratio):
+                self.right_offset *= abs(self.last_left_pwm_ratio / self.last_right_pwm_ratio * right / left)
+                print('Offset: %f %f\n%d %d'%(self.left_offset, self.right_offset, left, right))
+            elif abs(self.last_left_pwm_ratio) < abs(
+                    self.last_right_pwm_ratio) and abs(self.left_pwm_ratio) < abs(
+                        self.right_pwm_ratio):
+                self.left_offset *= abs(self.last_right_pwm_ratio / self.last_left_pwm_ratio * left / right)
+                print('Offset: %f %f\n%d %d'%(self.left_offset, self.right_offset, left, right))
+            else:
+                self.right_offset = 1
+                self.left_offset = 1
+            self.SetPWMsRegister()
         self.last_left_pwm_ratio = self.left_pwm_ratio
         self.last_right_pwm_ratio = self.right_pwm_ratio
-        self.SetPWMsRegister()
-
 
 #main
 port = int(sys.argv[1])

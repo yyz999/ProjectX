@@ -10,8 +10,12 @@ from time import sleep
 msg = ''
 last_cmd_timestamp = time.time()
 # Init socket
+s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+s.connect(('google.com', 0))
+host = s.getsockname()[0]
+print('Host=%s'%host)
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.connect(('localhost', sys.argv[1]))
+s.connect((host, int(sys.argv[1])))
 
 
 # HTTPRequestHandler class
@@ -40,20 +44,29 @@ class CtlHTTPServer_RequestHandler(BaseHTTPRequestHandler):
         content_length = request_headers.get('Content-Length')
         content = self.rfile.read(int(content_length))
         self.send_response(200)
-
+        print('Content='+str(content))
         items = str(content).split('\'')[1].split('/')
+        print('Items='+str(items))
         msg = '%s:%s:%s' % (items[0], items[1], items[2])
+        print('Msg:='+msg)
         items = msg.split(':')
         if len(items) != 3:
+            print('TAG1')
             return
         if items[0] != 'M':
+            print('TAG2')
             return
-        if int(items[1]) > 127 or int(items[1]) < 0:
+        if int(items[1]) > 127 or int(items[1]) < -127:
+            print('TAG3')
+            print(int(items[1]))
             return
-        if int(items[2]) > 127 or int(items[2]) < 0:
+        if int(items[2]) > 127 or int(items[2]) < -127:
+            print('TAG4')
+            print(int(items[2]))
             return
         self.send_response(200)
-        s.sendall(msg)
+        print('Msg='+msg)
+        s.sendall(bytes(msg,'utf-8'))
 
 
 def run():
@@ -62,7 +75,7 @@ def run():
 
     # Server settings
     # Choose port 8080, for port 80, which is normally used for a http server, you need root access
-    server_address = ('localhost', 8888)
+    server_address = ('192.168.0.162', 8888)
     httpd = HTTPServer(server_address, CtlHTTPServer_RequestHandler)
     print('running server...')
     httpd.serve_forever()

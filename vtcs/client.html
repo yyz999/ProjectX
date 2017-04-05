@@ -59,8 +59,8 @@
                 }
                 context2.fillStyle = "rgba(0,0,0,1)";
                 context2.fillRect(x - 15, y - 15, 10, 10);
-                x_dir = Math.floor((x - 160) / 100 * 127);
-                y_mag = Math.floor((y - 160) / 100 * 127);
+                x_dir = (-1) * Math.floor((x - 160) / 100 * 127);
+                y_mag = (-1) * Math.floor((y - 160) / 100 * 127);
                 document.getElementById("xxx").value = x - 160;
                 document.getElementById("yyy").value = y - 160;
             }
